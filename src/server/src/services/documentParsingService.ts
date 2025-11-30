@@ -107,30 +107,58 @@ export class DocumentParsingService {
   }
 
   /**
-   * Trích xuất text từ image sử dụng Tesseract OCR
+   * Trích xuất text từ image sử dụng Tesseract OCR với hỗ trợ đa ngôn ngữ
    */
   private async extractFromImage(file: Express.Multer.File): Promise<CVAnalysis> {
-    const worker = await createWorker('eng');
+    console.log('🔤 Starting OCR with multi-language support...');
     
-    try {
-      const { data: { text } } = await worker.recognize(file.path);
-      await worker.terminate();
+    // Thử với multi-language (Vietnamese + English)
+    const languages = ['vie+eng', 'eng', 'vie'];
+    let extractedText = '';
+    let ocrSuccess = false;
+    
+    for (const lang of languages) {
+      console.log(`🌐 Trying OCR with language: ${lang}`);
       
-      return this.analyzeExtractedText(text, 'OCR');
-      
-    } catch (error) {
-      console.error('OCR error:', error);
-      await worker.terminate().catch(() => {});
-      throw new AppError('Không thể nhận diện text từ ảnh. Vui lòng sử dụng ảnh rõ nét và chất lượng cao.', 400);
+      try {
+        const worker = await createWorker(lang);
+        
+        try {
+          const { data: { text, confidence } } = await worker.recognize(file.path);
+          await worker.terminate();
+          
+          console.log(`✅ OCR Success with ${lang}, confidence: ${confidence}%`);
+          console.log(`📝 Text preview: ${text.substring(0, 100)}...`);
+          
+          extractedText = text;
+          ocrSuccess = true;
+          break; // Exit loop on success
+          
+        } catch (recognizeError: any) {
+          console.log(`❌ Recognition failed with ${lang}:`, recognizeError?.message || recognizeError);
+          await worker.terminate().catch(() => {});
+          continue; // Try next language
+        }
+        
+      } catch (workerError: any) {
+        console.log(`⚠️ Worker creation failed for ${lang}:`, workerError?.message || workerError);
+        continue; // Try next language
+      }
     }
+    
+    if (!ocrSuccess || !extractedText.trim()) {
+      throw new AppError('Không thể nhận diện text từ ảnh. Vui lòng sử dụng ảnh rõ nét, chất lượng cao và đảm bảo text có độ tương phản tốt.', 400);
+    }
+    
+    return this.analyzeExtractedText(extractedText, 'OCR (Vietnamese + English)');
   }
 
   /**
    * Phân tích text đã trích xuất để tạo CVAnalysis
    */
   private analyzeExtractedText(text: string, source: string): CVAnalysis {
-    // Clean up text
-    const cleanText = text.replace(/\s+/g, ' ').trim();
+    // Enhanced text cleaning for Vietnamese + English
+    const cleanText = this.cleanVietnameseText(text);
     
     // Extract skills (tìm các từ khóa kỹ năng phổ biến)
     const skills = this.extractSkills(cleanText);
@@ -158,20 +186,39 @@ export class DocumentParsingService {
    */
   private extractSkills(text: string): string[] {
     const skillKeywords = [
-      // Programming Languages
+      // Programming Languages - English & Vietnamese
       'javascript', 'typescript', 'python', 'java', 'c#', 'c++', 'php', 'go', 'rust', 'swift', 'kotlin',
-      // Frameworks & Libraries
+      'lập trình javascript', 'lập trình python', 'lập trình java', 'ngôn ngữ lập trình',
+      
+      // Frameworks & Libraries - English & Vietnamese  
       'react', 'vue', 'angular', 'node.js', 'express', 'django', 'flask', 'spring', 'laravel',
-      // Databases
+      'reactjs', 'vuejs', 'angularjs', 'nodejs', 'framework react', 'framework vue',
+      
+      // Databases - English & Vietnamese
       'mysql', 'postgresql', 'mongodb', 'redis', 'elasticsearch', 'sqlite', 'oracle',
-      // Tools & Technologies
+      'cơ sở dữ liệu', 'database', 'sql', 'nosql', 'quản lý database',
+      
+      // Tools & Technologies - English & Vietnamese
       'docker', 'kubernetes', 'jenkins', 'git', 'github', 'gitlab', 'aws', 'azure', 'gcp',
-      // Web Technologies
-      'html', 'css', 'sass', 'less', 'webpack', 'babel', 'rest api', 'graphql',
-      // Methodologies
-      'agile', 'scrum', 'devops', 'ci/cd', 'tdd', 'microservices',
-      // Soft Skills (Vietnamese)
-      'quản lý', 'lãnh đạo', 'giao tiếp', 'teamwork', 'problem solving', 'analytical'
+      'công cụ phát triển', 'version control', 'kiểm soát phiên bản', 'cloud computing',
+      
+      // Web Technologies - English & Vietnamese
+      'html', 'css', 'sass', 'less', 'webpack', 'babel', 'rest api', 'graphql', 'jquery',
+      'thiết kế web', 'web design', 'frontend', 'backend', 'fullstack', 'responsive design',
+      
+      // Methodologies - English & Vietnamese
+      'agile', 'scrum', 'devops', 'ci/cd', 'tdd', 'microservices', 'waterfall',
+      'phương pháp agile', 'quy trình scrum', 'phát triển phần mềm', 'quản lý dự án',
+      
+      // Soft Skills - Vietnamese & English
+      'quản lý', 'lãnh đạo', 'giao tiếp', 'teamwork', 'problem solving', 'analytical',
+      'kỹ năng giao tiếp', 'làm việc nhóm', 'giải quyết vấn đề', 'tư duy phân tích',
+      'leadership', 'management', 'communication', 'collaboration', 'critical thinking',
+      
+      // Vietnamese Specific Skills
+      'tiếng anh', 'english', 'ngoại ngữ', 'tin học văn phòng', 'microsoft office',
+      'excel', 'powerpoint', 'word', 'photoshop', 'thiết kế đồ họa', 'marketing',
+      'bán hàng', 'chăm sóc khách hàng', 'kế toán', 'tài chính', 'nhân sự'
     ];
 
     const foundSkills: string[] = [];
@@ -199,12 +246,18 @@ export class DocumentParsingService {
   }
 
   /**
-   * Trích xuất thông tin kinh nghiệm
+   * Trích xuất thông tin kinh nghiệm (Vietnamese + English)
    */
   private extractExperience(text: string): string {
     const experienceKeywords = [
-      'kinh nghiệm', 'experience', 'làm việc', 'work', 'công việc', 'job',
-      'dự án', 'project', 'phát triển', 'develop', 'xây dựng', 'build'
+      // Vietnamese keywords
+      'kinh nghiệm', 'làm việc', 'công việc', 'dự án', 'phát triển', 'xây dựng',
+      'tham gia', 'thực hiện', 'chịu trách nhiệm', 'đảm nhiệm', 'quản lý',
+      'lập trình', 'thiết kế', 'phân tích', 'triển khai', 'vận hành',
+      
+      // English keywords  
+      'experience', 'work', 'job', 'project', 'develop', 'build',
+      'responsible', 'manage', 'lead', 'implement', 'design', 'analyze'
     ];
 
     const sentences = text.split(/[.!?]+/);
@@ -213,26 +266,66 @@ export class DocumentParsingService {
       return experienceKeywords.some(keyword => lowerSentence.includes(keyword));
     });
 
-    // Tìm các pattern về số năm kinh nghiệm
-    const yearPattern = /(\d+)\s*(năm|year)/gi;
-    const yearMatches = text.match(yearPattern);
+    // Enhanced patterns for Vietnamese and English
+    const yearPatterns = [
+      /(\d+)\s*(năm|years?)\s*(kinh nghiệm|experience)/gi,
+      /(\d+)\+?\s*(năm|years?)/gi,
+      /(từ|from)\s*(\d{4})\s*(đến|to|tới)\s*(\d{4}|\w+)/gi,
+      /(hơn|over|trên)\s*(\d+)\s*(năm|years?)/gi
+    ];
+    
+    const yearMatches: string[] = [];
+    yearPatterns.forEach(pattern => {
+      const matches = text.match(pattern);
+      if (matches) {
+        yearMatches.push(...matches);
+      }
+    });
+
+    // Company/position patterns
+    const positionPatterns = [
+      /(developer|lập trình viên|engineer|kỹ sư|manager|quản lý|leader|trưởng nhóm)/gi,
+      /(tại|at)\s+([A-Z][a-zA-Z0-9\s,\.]{2,50})/gi,
+      /(công ty|company)\s+([A-Z][a-zA-Z0-9\s,\.]{2,50})/gi
+    ];
+    
+    const positionMatches: string[] = [];
+    positionPatterns.forEach(pattern => {
+      const matches = text.match(pattern);
+      if (matches) {
+        positionMatches.push(...matches);
+      }
+    });
     
     let result = experienceSentences.slice(0, 3).join('. ').trim();
-    if (yearMatches && yearMatches.length > 0) {
-      result = `${yearMatches.join(', ')} kinh nghiệm. ${result}`;
+    
+    if (yearMatches.length > 0) {
+      result = `${yearMatches.slice(0, 3).join(', ')} kinh nghiệm. ${result}`;
+    }
+    
+    if (positionMatches.length > 0) {
+      result += ` ${positionMatches.slice(0, 2).join(', ')}.`;
     }
 
-    return result || 'Không tìm thấy thông tin kinh nghiệm cụ thể';
+    return result.trim() || 'Không tìm thấy thông tin kinh nghiệm cụ thể';
   }
 
   /**
-   * Trích xuất thông tin học vấn
+   * Trích xuất thông tin học vấn (Vietnamese + English)
    */
   private extractEducation(text: string): string {
     const educationKeywords = [
-      'đại học', 'university', 'college', 'học viện', 'trường',
-      'cử nhân', 'bachelor', 'thạc sĩ', 'master', 'tiến sĩ', 'phd', 'doctorate',
-      'bằng cấp', 'degree', 'chứng chỉ', 'certificate', 'khóa học', 'course'
+      // Vietnamese education terms
+      'đại học', 'học viện', 'trường', 'khoa', 'chuyên ngành', 'ngành học',
+      'cử nhân', 'thạc sĩ', 'tiến sĩ', 'kỹ sư', 'bằng cấp', 'bằng tốt nghiệp',
+      'chứng chỉ', 'khóa học', 'đào tạo', 'học tập', 'tốt nghiệp',
+      'cao đẳng', 'trung cấp', 'phổ thông', 'lớp 12', 'thpt',
+      
+      // English education terms
+      'university', 'college', 'institute', 'school', 'faculty', 'major',
+      'bachelor', 'master', 'phd', 'doctorate', 'degree', 'diploma',
+      'certificate', 'course', 'training', 'education', 'graduate',
+      'undergraduate', 'postgraduate', 'mba', 'bsc', 'msc'
     ];
 
     const sentences = text.split(/[.!?]+/);
@@ -241,7 +334,49 @@ export class DocumentParsingService {
       return educationKeywords.some(keyword => lowerSentence.includes(keyword));
     });
 
-    return educationSentences.slice(0, 2).join('. ').trim() || 'Không tìm thấy thông tin học vấn cụ thể';
+    // Extract specific degree patterns
+    const degreePatterns = [
+      /(cử nhân|bachelor|bsc|ba)\s+(.*?)(?:\.|,|$)/gi,
+      /(thạc sĩ|master|msc|ma|mba)\s+(.*?)(?:\.|,|$)/gi,
+      /(tiến sĩ|phd|doctorate)\s+(.*?)(?:\.|,|$)/gi,
+      /(tốt nghiệp|graduate)\s+(.*?)(?:\.|,|$)/gi,
+      /(chuyên ngành|major)\s*:?\s*(.*?)(?:\.|,|$)/gi
+    ];
+    
+    const degreeMatches: string[] = [];
+    degreePatterns.forEach(pattern => {
+      const matches = text.match(pattern);
+      if (matches) {
+        degreeMatches.push(...matches.slice(0, 2)); // Limit to 2 matches per pattern
+      }
+    });
+
+    // Extract university/school names
+    const institutionPatterns = [
+      /(đại học|university|college)\s+([A-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠƯĂÂÊÔƠƯ][a-zA-ZàáâãèéêëìíîïòóôõöùúûüăĐĩũơưăâêôơưỳỹỷỵýẢẠẤẦẨẪẬẮẰẲẴẶẾỀỂỄỆỈỊỒỔỖỘỚỜỞỠỢỦỨỪỬỰỲỴỶỸỹ\s]{2,50})/gi,
+      /(trường|school)\s+([A-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠƯĂÂÊÔƠƯ][a-zA-ZàáâãèéêëìíîïòóôõöùúûüăĐĩũơưăâêôơưỳỹỷỵýẢẠẤẦẨẪẬẮẰẲẴẶẾỀỂỄỆỈỊỒỔỖỘỚỜỞỠỢỦỨỪỬỰỲỴỶỸỹ\s]{2,50})/gi,
+      /(học viện|institute)\s+([A-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠƯĂÂÊÔƠƯ][a-zA-ZàáâãèéêëìíîïòóôõöùúûüăĐĩũơưăâêôơưỳỹỷỵýẢẠẤẦẨẪẬẮẰẲẴẶẾỀỂỄỆỈỊỒỔỖỘỚỜỞỠỢỦỨỪỬỰỲỴỶỸỹ\s]{2,50})/gi
+    ];
+    
+    const institutionMatches: string[] = [];
+    institutionPatterns.forEach(pattern => {
+      const matches = text.match(pattern);
+      if (matches) {
+        institutionMatches.push(...matches.slice(0, 2));
+      }
+    });
+
+    let result = educationSentences.slice(0, 3).join('. ').trim();
+    
+    if (degreeMatches.length > 0) {
+      result = `${degreeMatches.slice(0, 2).join(', ')}. ${result}`;
+    }
+    
+    if (institutionMatches.length > 0) {
+      result += ` Học tại: ${institutionMatches.slice(0, 2).join(', ')}.`;
+    }
+
+    return result.trim() || 'Không tìm thấy thông tin học vấn cụ thể';
   }
 
   /**
@@ -289,5 +424,51 @@ export class DocumentParsingService {
     } catch (error) {
       console.warn('Could not cleanup temp file:', error);
     }
+  }
+
+  /**
+   * Clean up Vietnamese text from OCR với các pattern thường gặp
+   */
+  private cleanVietnameseText(text: string): string {
+    let cleanText = text;
+    
+    // Basic cleanup
+    cleanText = cleanText.replace(/\s+/g, ' ').trim();
+    
+    // Common OCR Vietnamese character corrections
+    const corrections = [
+      // Common OCR mistakes for Vietnamese
+      [/đ/g, 'đ'], // Normalize đ character
+      [/Đ/g, 'Đ'], // Normalize Đ character
+      [/\bđại\s*học\b/gi, 'đại học'], // Fix "đại học"
+      [/\bkỹ\s*sư\b/gi, 'kỹ sư'], // Fix "kỹ sư"  
+      [/\bcử\s*nhân\b/gi, 'cử nhân'], // Fix "cử nhân"
+      [/\bthạc\s*sĩ\b/gi, 'thạc sĩ'], // Fix "thạc sĩ"
+      [/\btiến\s*sĩ\b/gi, 'tiến sĩ'], // Fix "tiến sĩ"
+      [/\bkinh\s*nghiệm\b/gi, 'kinh nghiệm'], // Fix "kinh nghiệm"
+      [/\blàm\s*việc\b/gi, 'làm việc'], // Fix "làm việc"
+      [/\bcông\s*việc\b/gi, 'công việc'], // Fix "công việc"
+      [/\bdự\s*án\b/gi, 'dự án'], // Fix "dự án"
+      [/\bphát\s*triển\b/gi, 'phát triển'], // Fix "phát triển"
+      [/\bquản\s*lý\b/gi, 'quản lý'], // Fix "quản lý"
+      [/\bgiao\s*tiếp\b/gi, 'giao tiếp'], // Fix "giao tiếp"
+      
+      // Remove multiple special characters
+      [/[^\w\sàáâãèéêìíòóôõùúăđĩũơưăâêôơưỳỹỷỵýẢẠẤẦẨẪẬẮẰẲẴẶẾỀỂỄỆỈỊỒỔỖỘỚỜỞỠỢỦỨỪỬỰỲỴỶỸẹẽẻểẹẽẻểẹẽẻểẹẽẻể.,;:()\-+@#%]/g, ' '],
+      
+      // Fix common number + năm patterns
+      [/(\d+)\s*năm/gi, '$1 năm'],
+      [/(\d+)\s*years?/gi, '$1 years'],
+      
+      // Clean up extra whitespace after corrections
+      [/\s+/g, ' ']
+    ];
+    
+    corrections.forEach(([pattern, replacement]) => {
+      cleanText = cleanText.replace(pattern as RegExp, replacement as string);
+    });
+    
+    // Final trim
+    return cleanText.trim();
   }
 }
