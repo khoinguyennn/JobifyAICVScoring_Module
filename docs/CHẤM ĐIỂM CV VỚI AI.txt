@@ -1,0 +1,6 @@
+Module chấm điểm CV với AI:
+ - Quy trình:
+  + Người dùng upload CV (pdf, docx, jpg, png) và chọn job
+  + AI phân tích cv và thông tin job đã chọn và trả kết quả chấm điểm cv và gợi ý hướng cải thiện
+ - Sử dụng pdf-parse để extract text cho cv định dạng pdf
+ - Sử dụng Tesseract OCR cho định dạng cv là ảnh

@@ -1,0 +1,29 @@
+{
+  "name": "jobify-ai-cv-scoring",
+  "version": "1.0.0",
+  "description": "AI-powered CV scoring system with job matching",
+  "main": "src/server/src/server.ts",
+  "scripts": {
+    "dev": "cd src/server && npm run dev",
+    "build": "cd src/server && npm run build", 
+    "start": "cd src/server && npm start",
+    "client": "cd src/client && python -m http.server 3000",
+    "client-alt": "cd src/client && python3 -m http.server 3000",
+    "install-server": "cd src/server && npm install",
+    "install-all": "npm run install-server",
+    "setup": "npm run install-all && echo 'Setup complete! Run npm run dev to start server'",
+    "test-api": "echo 'Open http://localhost:3000/test-api.html to test APIs'",
+    "full-dev": "echo 'Starting both servers...' && start cmd /k \"npm run dev\" && timeout 3 && start cmd /k \"npm run client\""
+  },
+  "keywords": ["ai", "cv", "scoring", "job", "matching", "gemini", "nodejs", "typescript"],
+  "author": "Jobify Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/jobify-ai-cv-scoring.git"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}

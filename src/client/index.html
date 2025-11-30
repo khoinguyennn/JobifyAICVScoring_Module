@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jobify - Chấm Điểm CV với AI</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <h1><i class="fas fa-robot"></i> Jobify AI CV Scorer</h1>
+                <p>Chấm điểm CV thông minh với AI - Nhận gợi ý cải thiện ngay lập tức</p>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="scoring-form-container">
+                <div class="form-header">
+                    <h2><i class="fas fa-file-upload"></i> Tải CV và Chọn Công Việc</h2>
+                </div>
+
+                <form id="cvScoringForm" class="cv-scoring-form">
+                    <!-- CV Upload Section -->
+                    <div class="form-section">
+                        <div class="section-header">
+                            <h3><i class="fas fa-cloud-upload-alt"></i> Tải CV lên</h3>
+                            <p>Hỗ trợ file: PDF, DOCX, JPG, PNG (Tối đa 10MB)</p>
+                        </div>
+                        
+                        <div class="upload-area" id="uploadArea">
+                            <div class="upload-content">
+                                <i class="fas fa-file-upload upload-icon"></i>
+                                <p class="upload-text">Kéo thả file CV vào đây hoặc <span class="browse-text">bấm để chọn file</span></p>
+                                <input type="file" id="cvFile" name="cvFile" accept=".pdf,.docx,.jpg,.jpeg,.png" hidden required>
+                            </div>
+                            <div class="file-preview" id="filePreview" style="display: none;">
+                                <div class="file-info">
+                                    <i class="fas fa-file"></i>
+                                    <span class="file-name"></span>
+                                    <span class="file-size"></span>
+                                    <button type="button" class="remove-file" id="removeFile">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Job Selection Section -->
+                    <div class="form-section">
+                        <div class="section-header">
+                            <h3><i class="fas fa-briefcase"></i> Chọn Công Việc</h3>
+                            <p>Chọn công việc mà bạn muốn chấm điểm CV</p>
+                        </div>
+
+                        <div class="job-selection">
+                            <div class="search-container">
+                                <i class="fas fa-search search-icon"></i>
+                                <input type="text" id="jobSearch" placeholder="Tìm kiếm công việc..." class="search-input">
+                            </div>
+                            
+                            <div class="job-filters">
+                                <select id="fieldFilter" class="filter-select">
+                                    <option value="">Tất cả lĩnh vực</option>
+                                </select>
+                                <select id="provinceFilter" class="filter-select">
+                                    <option value="">Tất cả tỉnh thành</option>
+                                </select>
+                            </div>
+
+                            <div class="jobs-list" id="jobsList">
+                                <div class="loading" id="jobsLoading">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                    <span>Đang tải danh sách công việc...</span>
+                                </div>
+                            </div>
+
+                            <input type="hidden" id="selectedJobId" name="selectedJobId" required>
+                        </div>
+                    </div>
+
+                    <!-- Submit Section -->
+                    <div class="form-section">
+                        <button type="button" class="submit-btn" id="submitBtn" disabled>
+                            <i class="fas fa-magic"></i>
+                            Chấm Điểm CV với AI
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Results Section -->
+                <div class="results-container" id="resultsContainer" style="display: none;">
+                    <div class="results-header">
+                        <h3><i class="fas fa-chart-line"></i> Kết Quả Chấm Điểm</h3>
+                    </div>
+                    <div class="results-content" id="resultsContent">
+                        <!-- Results will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+
+
+
+
+
